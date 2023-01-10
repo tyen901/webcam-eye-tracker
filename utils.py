@@ -3,10 +3,12 @@ import random
 import json
 import datetime
 import itertools
+import cv2
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import pytorch_lightning as pl
+import mediapipe as mp 
 
 from pathlib import Path
 from collections import OrderedDict
@@ -22,6 +24,9 @@ from ray.tune.integration.pytorch_lightning import TuneReportCallback
 from pytorch_lightning.loggers import TensorBoardLogger
 from Models import create_datasets, FaceDataset, SingleModel, EyesModel, FullModel
 
+mp_drawing = mp.solutions.drawing_utils
+mp_face_mesh = mp.solutions.face_mesh
+drawing_spec = mp_drawing.DrawingSpec(thickness=1, circle_radius=1)
 
 def get_config(path="config.ini", comment_char=";"):
     config_file = ConfigParser(inline_comment_prefixes=comment_char)
@@ -47,6 +52,85 @@ def shape_to_np(shape, dtype="int"):
     for i in range(0, 5):
         coords[i] = (shape.part(i).x, shape.part(i).y)
     return coords
+
+# Crop the right eye region
+def getRightEye(image, landmarks, eye_center):
+    eye_top = int(landmarks[263].y * image.shape[0])
+    eye_left = int(landmarks[362].x * image.shape[1])
+    eye_bottom = int(landmarks[374].y * image.shape[0])
+    eye_right = int(landmarks[263].x * image.shape[1])
+    eye_width = eye_right - eye_left
+
+    top = eye_center[1] - int(eye_width / 2)
+    bottom = eye_center[1] + int(eye_width / 2)
+
+    eye_img = image[
+        top:bottom,
+        eye_left:eye_right
+        ]
+    return eye_img
+
+# Get the right eye coordinates on the actual -> to visualize the bbox
+def getRightEyeRect(image, landmarks):
+    eye_top = int(landmarks[257].y * image.shape[0])
+    eye_left = int(landmarks[362].x * image.shape[1])
+    eye_bottom = int(landmarks[374].y * image.shape[0])
+    eye_right = int(landmarks[263].x * image.shape[1])
+    
+    cloned_image = image.copy()
+    cropped_right_eye = cloned_image[eye_top:eye_bottom, eye_left:eye_right]
+    h, w, _ = cropped_right_eye.shape
+    x = eye_left
+    y = eye_top
+    return x, y, w, h
+
+
+def getLeftEye(image, landmarks, eye_center):
+    eye_top = int(landmarks[159].y * image.shape[0])
+    eye_left = int(landmarks[33].x * image.shape[1])
+    eye_bottom = int(landmarks[145].y * image.shape[0])
+    eye_right = int(landmarks[133].x * image.shape[1])
+    eye_width = eye_right - eye_left
+    
+    top = eye_center[1] - int(eye_width / 2)
+    bottom = eye_center[1] + int(eye_width / 2)
+
+    eye_img = image[
+        top:bottom,
+        eye_left:eye_right
+        ]
+    return eye_img
+
+
+def getLeftEyeRect(image, landmarks):
+    # eye_left landmarks (27, 23, 130, 133) ->? how to utilize z info
+    eye_top = int(landmarks[159].y * image.shape[0])
+    eye_left = int(landmarks[33].x * image.shape[1])
+    eye_bottom = int(landmarks[145].y * image.shape[0])
+    eye_right = int(landmarks[133].x * image.shape[1])
+
+    cloned_image = image.copy()
+    cropped_left_eye = cloned_image[eye_top:eye_bottom, eye_left:eye_right]
+    h, w, _ = cropped_left_eye.shape
+
+    x = eye_left
+    y = eye_top
+    return x, y, w, h
+
+# Draw the face mesh annotations on the image.
+def drawFaceMesh(image, results):
+    image.flags.writeable = True
+    # image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    if results.multi_face_landmarks:
+        for face_landmarks in results.multi_face_landmarks:
+            #         print('face landmarks', face_landmarks)
+            mp_drawing.draw_landmarks(
+                image=image,
+                landmark_list=face_landmarks,
+                connections=mp_face_mesh.FACEMESH_CONTOURS,
+                landmark_drawing_spec=drawing_spec,
+                connection_drawing_spec=drawing_spec)
+        cv2.imshow('MediaPipe FaceMesh', image)
 
 
 def bgr_to_rgb(img):
@@ -89,8 +173,8 @@ def plot_region_map(path, region_map, map_scale, cmap="inferno"):
 
 def get_calibration_zones(w, h, target_radius):
     """Get coordinates for 9 point calibration"""
-    xs = (0 + target_radius, w // 2, w - target_radius)
-    ys = (0 + target_radius, h // 2, h - target_radius)
+    xs = (0 + target_radius, w / 2, w - target_radius)
+    ys = (0 + target_radius, h / 2, h - target_radius)
     zones = list(itertools.product(xs, ys))
     random.shuffle(zones)
     return zones
