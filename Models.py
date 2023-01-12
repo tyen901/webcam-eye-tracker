@@ -93,7 +93,7 @@ class SingleModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()  # stores hparams in saved checkpoint files
 
-        feat_size = 64
+        feat_size = 256
         self.example_input_array = torch.rand(1, 3, feat_size, feat_size)
 
         self.img_type = img_type
@@ -182,7 +182,7 @@ class EyesModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()  # stores hparams in saved checkpoint files
 
-        feat_size = 64
+        feat_size = 256
         self.example_input_array = [torch.rand(1, 3, feat_size, feat_size)] * 2
 
         self.lr = config["lr"]
@@ -287,7 +287,7 @@ class FullModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()  # stores hparams in saved checkpoint files
 
-        feat_size = 64
+        feat_size = 256
         self.lr = config["lr"]
 
         # Example input for graph logging
