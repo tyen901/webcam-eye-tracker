@@ -449,8 +449,8 @@ def predict_screen_errors(
 def plot_screen_errors(x, y, z, path_plot=None, path_errors=None):
     """Plot prediction errors over screen space"""
     # create grid
-    xi = np.arange(0, 1920, 1)
-    yi = np.arange(0, 1080, 1)
+    xi = np.arange(0, 2560, 1)
+    yi = np.arange(0, 1440, 1)
     xi, yi = np.meshgrid(xi, yi)
 
     # interpolate

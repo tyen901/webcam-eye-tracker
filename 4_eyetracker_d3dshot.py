@@ -33,8 +33,8 @@ track_error = deque(
     maxlen=SETTINGS["avg_window_length"] * 2,
 )
 
-w = 1920
-h = 1080
+w = 2560
+h = 1440
 videoWriter = None
 if EYETRACKER["write_to_disk"]:
     # FIXME: fix video codec on windows
